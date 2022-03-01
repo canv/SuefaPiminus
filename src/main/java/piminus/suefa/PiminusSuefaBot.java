@@ -2,6 +2,7 @@ package piminus.suefa;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
+import com.pengrad.telegrambot.model.CallbackQuery;
 import com.pengrad.telegrambot.model.InlineQuery;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
@@ -11,11 +12,31 @@ import com.pengrad.telegrambot.model.request.InlineQueryResultArticle;
 import com.pengrad.telegrambot.request.AnswerInlineQuery;
 import com.pengrad.telegrambot.request.BaseRequest;
 import com.pengrad.telegrambot.request.EditMessageText;
+import com.pengrad.telegrambot.request.SendMessage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static javax.swing.UIManager.put;
 
 public class PiminusSuefaBot {
     private static final String PRCESSING_LABLE = "...";
     // Create your bot passing the token received from @BotFather
     TelegramBot bot = new TelegramBot(System.getenv("BOT_TOKEN"));
+
+    private final static List<String> opponentWins = new ArrayList<String>() {{
+        add("rs");
+        add("sp");
+        add("pr");
+    }};
+
+    private final static Map<String, String> items = new HashMap<String, String>() {{
+        put("r", "\uD83D\uDDFF");
+        put("s", "✂");
+        put("p", "\uD83D\uDCC4");
+    }};
 
     public void serve() {
 
@@ -33,6 +54,7 @@ public class PiminusSuefaBot {
 
         InlineQuery inlineQuery = update.inlineQuery();
         Message message = update.message();
+        CallbackQuery callbackQuery = update.callbackQuery();
 
         BaseRequest request = null;
 
@@ -58,9 +80,9 @@ public class PiminusSuefaBot {
             request = new EditMessageText(chatId, messageId, message.text())
                     .replyMarkup(
                             new InlineKeyboardMarkup (
-                                    new InlineKeyboardButton("\uD83D\uDDFF").callbackData(String.format("%d %s %s %s", chatId, senderName, senderChoice, "r")),
-                                    new InlineKeyboardButton("✂").callbackData(String.format("%d %s %s %s", chatId, senderName, senderChoice, "s")),
-                                    new InlineKeyboardButton("\uD83D\uDCC4").callbackData(String.format("%d %s %s %s", chatId, senderName, senderChoice, "p"))
+                                    new InlineKeyboardButton("\uD83D\uDDFF").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "r", messageId)),
+                                    new InlineKeyboardButton("✂").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "s", messageId)),
+                                    new InlineKeyboardButton("\uD83D\uDCC4").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "p", messageId))
                             )
                     );
 
@@ -73,6 +95,36 @@ public class PiminusSuefaBot {
 
             request = new AnswerInlineQuery(inlineQuery.id(), rockQueryResult, scissorsQueryResult, paperQueryResult).cacheTime(5);
 
+        } else if (callbackQuery != null){
+            String[] data  = callbackQuery.data().split(" ");
+            String chatId = data[0];
+            String senderName = data[1];
+            String senderChoice = data[2];
+            String opponentChoice = data[3];
+            int messageId = Integer.parseInt(data[4]);
+            String opponentName = callbackQuery.from().firstName();
+
+            if(senderChoice.equals(opponentChoice)){
+                request = new SendMessage(chatId,"Ничья!");
+            } else if (opponentWins.contains(senderChoice + opponentChoice)) {
+                request = new EditMessageText(
+                        chatId, messageId,
+                        String.format(
+                                "%s выбрал %s и отхватил от %s, выбравшего %s",
+                                senderName, items.get(senderChoice),
+                                opponentName, items.get(opponentChoice)
+                        )
+                );
+            } else {
+                request = new EditMessageText(
+                        chatId, messageId,
+                        String.format(
+                                "%s выбрал %s и отхватил от %s, выбравшего %s",
+                                opponentName, items.get(opponentChoice),
+                                senderName, items.get(senderChoice)
+                        )
+                );
+            }
         }
 
 
