@@ -19,14 +19,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static javax.swing.UIManager.put;
-
 public class PiminusSuefaBot {
-    private static final String PRCESSING_LABLE = "...";
-    // Create your bot passing the token received from @BotFather
+    private static final String PROCESSING_LABEL = "...";
+
     TelegramBot bot = new TelegramBot(System.getenv("BOT_TOKEN"));
 
-    private final static List<String> opponentWins = new ArrayList<String>() {{
+    private final static List<String> senderWins = new ArrayList<String>() {{
         add("rs");
         add("sp");
         add("pr");
@@ -39,13 +37,8 @@ public class PiminusSuefaBot {
     }};
 
     public void serve() {
-
-// Register for updates
         bot.setUpdatesListener(updates -> {
-
             updates.forEach(this::process);
-            // ... process updates
-            // return id of last processed update or confirm them all
             return UpdatesListener.CONFIRMED_UPDATES_ALL;
         });
     }
@@ -58,8 +51,7 @@ public class PiminusSuefaBot {
 
         BaseRequest request = null;
 
-
-        if (message != null && message.viaBot() != null && message.viaBot().username().equals(System.getenv("BOT_NAME"))) {
+        if (isSenderStartGame(message)) {
             InlineKeyboardMarkup inlineKeyboardMarkup = message.replyMarkup();
 
             if (inlineKeyboardMarkup == null) return;
@@ -69,7 +61,7 @@ public class PiminusSuefaBot {
             if (inlineKeyboardButtons == null) return;
 
             InlineKeyboardButton button = inlineKeyboardButtons[0][0];
-            if (!button.text().equals(PRCESSING_LABLE)) return;
+            if (!button.text().equals(PROCESSING_LABEL)) return;
 
 
             Long chatId = message.chat().id();
@@ -79,13 +71,12 @@ public class PiminusSuefaBot {
 
             request = new EditMessageText(chatId, messageId, message.text())
                     .replyMarkup(
-                            new InlineKeyboardMarkup (
+                            new InlineKeyboardMarkup(
                                     new InlineKeyboardButton("\uD83D\uDDFF").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "r", messageId)),
                                     new InlineKeyboardButton("✂").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "s", messageId)),
                                     new InlineKeyboardButton("\uD83D\uDCC4").callbackData(String.format("%d %s %s %s %d", chatId, senderName, senderChoice, "p", messageId))
                             )
                     );
-
 
 
         } else if (inlineQuery != null) {
@@ -95,8 +86,8 @@ public class PiminusSuefaBot {
 
             request = new AnswerInlineQuery(inlineQuery.id(), rockQueryResult, scissorsQueryResult, paperQueryResult).cacheTime(5);
 
-        } else if (callbackQuery != null){
-            String[] data  = callbackQuery.data().split(" ");
+        } else if (callbackQuery != null) {
+            String[] data = callbackQuery.data().split(" ");
             String chatId = data[0];
             String senderName = data[1];
             String senderChoice = data[2];
@@ -104,25 +95,25 @@ public class PiminusSuefaBot {
             int messageId = Integer.parseInt(data[4]);
             String opponentName = callbackQuery.from().firstName();
 
-            if(senderChoice.equals(opponentChoice)){
-                request = new SendMessage(chatId,"Ничья!");
-            } else if (opponentWins.contains(senderChoice + opponentChoice)) {
-                request = new EditMessageText(
-                        chatId, messageId,
-                        String.format(
-                                "%s выбрал %s и отхватил от %s, выбравшего %s",
-                                senderName, items.get(senderChoice),
-                                opponentName, items.get(opponentChoice)
-                        )
-                );
-            } else {
+            if (senderChoice.equals(opponentChoice)) {
+                request = new SendMessage(chatId, "Ничья!");
+            } else if (senderWins.contains(senderChoice + opponentChoice)) {
                 request = new EditMessageText(
                         chatId, messageId,
                         String.format(
                                 "%s выбрал %s и отхватил от %s, выбравшего %s",
                                 opponentName, items.get(opponentChoice),
                                 senderName, items.get(senderChoice)
-                        )
+                                )
+                );
+            } else {
+                request = new EditMessageText(
+                        chatId, messageId,
+                        String.format(
+                                "%s выбрал %s и отхватил от %s, выбравшего %s",
+                                senderName, items.get(senderChoice),
+                                opponentName, items.get(opponentChoice)
+                                )
                 );
             }
         }
@@ -134,11 +125,15 @@ public class PiminusSuefaBot {
 
     }
 
+    private boolean isSenderStartGame(Message message) {
+        return message != null && message.viaBot() != null && message.viaBot().username().equals(System.getenv("BOT_NAME"));
+    }
+
     private InlineQueryResultArticle getQueryResult(String id, String title, String callbackData) {
         return new InlineQueryResultArticle(id, title, "Су-е-фа!")
                 .replyMarkup(
                         new InlineKeyboardMarkup(
-                                new InlineKeyboardButton(PRCESSING_LABLE).callbackData(callbackData)
+                                new InlineKeyboardButton(PROCESSING_LABEL).callbackData(callbackData)
                         )
                 );
     }
